@@ -73,8 +73,9 @@ def follow_user(user_id):
     
     success, message = UserService.follow_user(current_user, user_id)
     if success:
-        # Create notification for the followed user
-        NotificationService.notify_follow(current_user, user_id)
+        followee = UserService.get_user_by_id(user_id)
+        if followee:
+            NotificationService.notify_follow(followee, current_user)
         return jsonify({'success': True, 'message': message}), 200
     return jsonify({'success': False, 'message': message}), 400
 

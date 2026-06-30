@@ -140,6 +140,7 @@ class User(UserMixin, db.Model):
         if not existing:
             save = UserSave(user_id=self.id, review_id=review.id)
             db.session.add(save)
+            review.saves_count = (review.saves_count or 0) + 1
             db.session.commit()
             return True
         return False
@@ -148,6 +149,7 @@ class User(UserMixin, db.Model):
         save = UserSave.query.filter_by(user_id=self.id, review_id=review.id).first()
         if save:
             db.session.delete(save)
+            review.saves_count = max(0, (review.saves_count or 0) - 1)
             db.session.commit()
             return True
         return False

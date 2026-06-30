@@ -1,5 +1,5 @@
 from app.models.notification import Notification, NotificationType, NotificationStatus
-from app.models.user import UserFollow, UserNotificationPreference
+from app.models.user import User, UserFollow, UserNotificationPreference
 from app import db
 from datetime import datetime
 
@@ -104,6 +104,14 @@ class NotificationService:
     @staticmethod
     def notify_follow(followed_user, follower):
         """Notify when someone follows you"""
+        if isinstance(followed_user, int):
+            followed_user = User.query.get(followed_user)
+        if isinstance(follower, int):
+            follower = User.query.get(follower)
+
+        if not followed_user or not follower:
+            return
+
         # Don't notify if following yourself
         if follower.id == followed_user.id:
             return

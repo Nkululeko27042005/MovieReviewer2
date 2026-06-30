@@ -274,20 +274,22 @@ class ReviewService:
         
         # Build query
         query = Review.query.filter_by(is_published=True)
-        
+        filters = []
+
         if favorite_genre_ids:
             # Get reviews from favorite genres
             genre_reviews = db.session.query(ReviewGenre.review_id).filter(
                 ReviewGenre.genre_id.in_(favorite_genre_ids)
             ).subquery()
-            query = query.filter(Review.id.in_(genre_reviews))
-        
+            filters.append(Review.id.in_(genre_reviews))
+
         # Also include reviews from followed users
         followed_ids = [f.followed_id for f in user.following]
         if followed_ids:
-            query = query.or_(Review.author_id.in_(followed_ids))
-        
-        # Apply sorting
+            filters.append(Review.author_id.in_(followed_ids))
+
+        if filters:
+            query = query.filter(or_(*filters))
         if sort_by == 'newest':
             query = query.order_by(desc(Review.published_at))
         elif sort_by == 'most_viewed':

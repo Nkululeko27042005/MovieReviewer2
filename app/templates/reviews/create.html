@@ -170,7 +170,7 @@
         
         <div class="form-actions">
             <a href="{{ url_for('views.feed_page') }}" class="btn btn-outline">Cancel</a>
-            <button type="submit" class="btn btn-primary btn-lg">
+            <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
                 <i class="fas fa-pen"></i> Publish Review
             </button>
         </div>
@@ -198,6 +198,7 @@
 <script>
 let goodMomentCount = 1;
 let badMomentCount = 1;
+let isSubmitting = false;
 
 function addMoment(type) {
     const container = document.getElementById(`${type}MomentsContainer`);
@@ -235,6 +236,13 @@ function addMoment(type) {
 }
 
 document.getElementById('reviewForm').addEventListener('submit', function(e) {
+    // Prevent double submission
+    if (isSubmitting) {
+        e.preventDefault();
+        showFlashMessage('warning', 'Please wait, your review is being published...');
+        return;
+    }
+    
     // Validate ratings
     const ratingFields = ['overall_rating', 'acting_rating', 'cast_selection_rating', 'pacing_rating', 'plot_rating'];
     for (const field of ratingFields) {
@@ -246,9 +254,23 @@ document.getElementById('reviewForm').addEventListener('submit', function(e) {
         }
     }
     
-    if (!validateForm(this)) {
+    // Validate required fields
+    const title = document.getElementById('title').value.trim();
+    const movieName = document.getElementById('movie_name').value.trim();
+    const thoughts = document.getElementById('overall_thoughts').value.trim();
+    
+    if (!title || !movieName || !thoughts) {
         e.preventDefault();
+        showFlashMessage('error', 'Please fill in all required fields');
+        return;
     }
+    
+    // Disable submit button
+    const submitBtn = document.getElementById('submitBtn');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Publishing...';
+    
+    isSubmitting = true;
 });
 </script>
 {% endblock %}

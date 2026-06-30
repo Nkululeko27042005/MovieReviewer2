@@ -16,6 +16,16 @@ class AnalyticsService:
         inspector = inspect(db.engine)
         if not inspector.has_table(DailyAnalytics.__tablename__):
             DailyAnalytics.__table__.create(bind=db.engine, checkfirst=True)
+
+    @staticmethod
+    def _ensure_user_analytics_table():
+        """Create the user analytics table if it does not exist."""
+        from app.models.analytics import UserAnalytics
+        from sqlalchemy import inspect
+
+        inspector = inspect(db.engine)
+        if not inspector.has_table(UserAnalytics.__tablename__):
+            UserAnalytics.__table__.create(bind=db.engine, checkfirst=True)
     
     @staticmethod
     def get_review_statistics():
@@ -44,15 +54,37 @@ class AnalyticsService:
         }
     
     @staticmethod
+    @staticmethod
+    def _normalize_user_analytics_counters(analytics):
+        """Ensure user analytics counter fields are initialized to integers."""
+        for field in (
+            'reviews_created',
+            'comments_made',
+            'likes_received',
+            'likes_given',
+            'new_followers',
+            'profile_views',
+            'total_reviews',
+            'total_comments',
+            'total_likes_received',
+            'total_followers'
+        ):
+            if getattr(analytics, field) is None:
+                setattr(analytics, field, 0)
+
     def update_user_daily_stats(user_id, activity_type):
         """Update aggregate daily stats for a user."""
         from app.models.analytics import UserAnalytics
+
+        AnalyticsService._ensure_user_analytics_table()
 
         today = date.today()
         analytics = UserAnalytics.query.filter_by(user_id=user_id, date=today).first()
         if not analytics:
             analytics = UserAnalytics(user_id=user_id, date=today)
             db.session.add(analytics)
+
+        AnalyticsService._normalize_user_analytics_counters(analytics)
 
         if activity_type == 'profile_view':
             analytics.profile_views += 1
@@ -75,6 +107,8 @@ class AnalyticsService:
         """Get a summary of user analytics for the requested time window."""
         from datetime import timedelta
         from app.models.analytics import UserAnalytics
+
+        AnalyticsService._ensure_user_analytics_table()
 
         end_date = date.today()
         start_date = end_date - timedelta(days=max(days - 1, 0))
