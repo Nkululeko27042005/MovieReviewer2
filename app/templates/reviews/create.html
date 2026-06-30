@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+
+{% block title %}Create Review - MovieReviewer{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h1 class="text-center" style="margin-bottom: 24px;">Write a Movie Review</h1>
+    <p class="text-center text-muted" style="margin-bottom: 30px;">Share your thoughts about a movie with the community</p>
+    
+    <form method="POST" action="{{ url_for('views.create_review_page') }}" enctype="multipart/form-data" id="reviewForm">
+        {{ form.hidden_tag() }}
+        
+        <!-- Basic Info -->
+        <div class="form-row">
+            <div class="form-group">
+                <label for="title">Review Title</label>
+                <input type="text" id="title" name="title" class="form-control" 
+                       placeholder="Catchy title for your review" required>
+            </div>
+            <div class="form-group">
+                <label for="movie_name">Movie Name</label>
+                <input type="text" id="movie_name" name="movie_name" class="form-control" 
+                       placeholder="Movie title" required>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label>Overall Rating (1-10)</label>
+            <div class="star-rating-input">
+                {% for i in range(10, 0, -1) %}
+                    <input type="radio" id="overall_rating_{{i}}" name="overall_rating" value="{{i}}" required>
+                    <label for="overall_rating_{{i}}" title="{{i}} stars"></label>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label>Genres</label>
+            <div class="genre-pills">
+                {% for genre in form.genres.choices %}
+                    <input type="checkbox" id="genre_{{ genre[0] }}" name="genres" value="{{ genre[0] }}">
+                    <label for="genre_{{ genre[0] }}">{{ genre[1] }}</label>
+                {% endfor %}
+            </div>
+            <div class="help-text">Select multiple genres</div>
+        </div>
+        
+        <div class="form-group">
+            <label for="overall_thoughts">Overall Thoughts / Summary</label>
+            <textarea id="overall_thoughts" name="overall_thoughts" class="form-control" 
+                      rows="6" placeholder="Write your overall thoughts about the movie..." required></textarea>
+        </div>
+        
+        <!-- Performance Ratings -->
+        <h3 style="margin: 30px 0 20px;">Performance Ratings</h3>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label>Acting Performance</label>
+                <div class="star-rating-input">
+                    {% for i in range(10, 0, -1) %}
+                        <input type="radio" id="acting_rating_{{i}}" name="acting_rating" value="{{i}}" required>
+                        <label for="acting_rating_{{i}}" title="{{i}} stars"></label>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Cast Selection</label>
+                <div class="star-rating-input">
+                    {% for i in range(10, 0, -1) %}
+                        <input type="radio" id="cast_selection_{{i}}" name="cast_selection_rating" value="{{i}}" required>
+                        <label for="cast_selection_{{i}}" title="{{i}} stars"></label>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label>Movie Pacing</label>
+                <div class="star-rating-input">
+                    {% for i in range(10, 0, -1) %}
+                        <input type="radio" id="pacing_rating_{{i}}" name="pacing_rating" value="{{i}}" required>
+                        <label for="pacing_rating_{{i}}" title="{{i}} stars"></label>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Movie Plot/Premise</label>
+                <div class="star-rating-input">
+                    {% for i in range(10, 0, -1) %}
+                        <input type="radio" id="plot_rating_{{i}}" name="plot_rating" value="{{i}}" required>
+                        <label for="plot_rating_{{i}}" title="{{i}} stars"></label>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Good Moments -->
+        <h3 style="margin: 30px 0 20px;">Good Moments</h3>
+        <div id="goodMomentsContainer">
+            <div class="moment-group good-moment">
+                <div class="form-group">
+                    <label>Description of Good Moment</label>
+                    <textarea name="good_moments[0][description]" class="form-control" 
+                              rows="3" placeholder="Describe a good moment/scene..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Scene Description</label>
+                    <textarea name="good_moments[0][scene_description]" class="form-control" 
+                              rows="2" placeholder="Describe the scene..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Images (Multiple allowed)</label>
+                    <input type="file" name="good_moments[0][images]" class="form-control" multiple accept="image/*">
+                    <div class="help-text">You can select multiple images for this moment</div>
+                </div>
+            </div>
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" onclick="addMoment('good')">
+            <i class="fas fa-plus"></i> Add Another Good Moment
+        </button>
+        
+        <!-- Bad Moments -->
+        <h3 style="margin: 30px 0 20px;">Bad Moments</h3>
+        <div id="badMomentsContainer">
+            <div class="moment-group bad-moment">
+                <div class="form-group">
+                    <label>Description of Bad Moment</label>
+                    <textarea name="bad_moments[0][description]" class="form-control" 
+                              rows="3" placeholder="Describe a bad moment/scene..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Scene Description</label>
+                    <textarea name="bad_moments[0][scene_description]" class="form-control" 
+                              rows="2" placeholder="Describe the scene..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Images (Multiple allowed)</label>
+                    <input type="file" name="bad_moments[0][images]" class="form-control" multiple accept="image/*">
+                </div>
+            </div>
+        </div>
+        <button type="button" class="btn btn-outline btn-sm" onclick="addMoment('bad')">
+            <i class="fas fa-plus"></i> Add Another Bad Moment
+        </button>
+        
+        <!-- Posters & Options -->
+        <h3 style="margin: 30px 0 20px;">Posters & Options</h3>
+        
+        <div class="form-row">
+            <div class="form-group">
+                <label for="review_poster">Review Poster</label>
+                <input type="file" id="review_poster" name="review_poster" class="form-control" accept="image/*">
+                <div class="help-text">Custom poster for your review</div>
+            </div>
+            <div class="form-group">
+                <label for="movie_poster">Movie Poster</label>
+                <input type="file" id="movie_poster" name="movie_poster" class="form-control" accept="image/*">
+                <div class="help-text">Official movie poster</div>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 8px; font-weight: 400;">
+                <input type="checkbox" name="has_spoilers" id="has_spoilers" value="y">
+                This review contains spoilers
+            </label>
+        </div>
+        
+        <div class="form-actions">
+            <a href="{{ url_for('views.feed_page') }}" class="btn btn-outline">Cancel</a>
+            <button type="submit" class="btn btn-primary btn-lg">
+                <i class="fas fa-pen"></i> Publish Review
+            </button>
+        </div>
+    </form>
+</div>
+
+<style>
+.moment-group {
+    background: var(--bg-color);
+    padding: 20px;
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+    border-left: 4px solid var(--primary-color);
+}
+.moment-group.good-moment {
+    border-left-color: var(--success-color);
+}
+.moment-group.bad-moment {
+    border-left-color: var(--danger-color);
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let goodMomentCount = 1;
+let badMomentCount = 1;
+
+function addMoment(type) {
+    const container = document.getElementById(`${type}MomentsContainer`);
+    const count = type === 'good' ? goodMomentCount : badMomentCount;
+    
+    const momentHtml = `
+        <div class="moment-group ${type}-moment">
+            <div class="form-group">
+                <label>Description of ${type === 'good' ? 'Good' : 'Bad'} Moment</label>
+                <textarea name="${type}_moments[${count}][description]" class="form-control" 
+                          rows="3" placeholder="Describe a ${type} moment/scene..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Scene Description</label>
+                <textarea name="${type}_moments[${count}][scene_description]" class="form-control" 
+                          rows="2" placeholder="Describe the scene..."></textarea>
+            </div>
+            <div class="form-group">
+                <label>Images (Multiple allowed)</label>
+                <input type="file" name="${type}_moments[${count}][images]" class="form-control" multiple accept="image/*">
+            </div>
+            <button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.remove()">
+                <i class="fas fa-trash"></i> Remove
+            </button>
+        </div>
+    `;
+    
+    container.insertAdjacentHTML('beforeend', momentHtml);
+    
+    if (type === 'good') {
+        goodMomentCount++;
+    } else {
+        badMomentCount++;
+    }
+}
+
+document.getElementById('reviewForm').addEventListener('submit', function(e) {
+    // Validate ratings
+    const ratingFields = ['overall_rating', 'acting_rating', 'cast_selection_rating', 'pacing_rating', 'plot_rating'];
+    for (const field of ratingFields) {
+        const checked = document.querySelector(`input[name="${field}"]:checked`);
+        if (!checked) {
+            e.preventDefault();
+            showFlashMessage('error', `Please provide a rating for ${field.replace('_rating', '').replace('_', ' ')}`);
+            return;
+        }
+    }
+    
+    if (!validateForm(this)) {
+        e.preventDefault();
+    }
+});
+</script>
+{% endblock %}

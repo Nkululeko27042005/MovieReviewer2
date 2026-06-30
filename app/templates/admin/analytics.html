@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+
+{% block title %}Analytics - Admin - MovieReviewer{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style>
+.chart-container {
+    background: var(--white);
+    border-radius: var(--radius);
+    padding: 24px;
+    box-shadow: var(--shadow);
+    margin-bottom: 24px;
+}
+.chart-container h3 {
+    margin-bottom: 16px;
+}
+.chart-wrapper {
+    position: relative;
+    height: 300px;
+}
+        .rating-bar {
+            background: var(--primary-color);
+            width: 30px;
+            border-radius: 4px 4px 0 0;
+            min-height: 4px;
+        }
+</style>
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 1200px; margin: 0 auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h1>Platform Analytics</h1>
+        <div style="display: flex; gap: 8px;">
+            <a href="{{ url_for('admin.get_all_users') }}" class="btn btn-outline btn-sm">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+            <button onclick="calculateDaily()" class="btn btn-primary btn-sm">
+                <i class="fas fa-sync"></i> Calculate Today
+            </button>
+        </div>
+    </div>
+    
+    <!-- Date Picker -->
+    <div class="card" style="margin-bottom: 20px;">
+        <form method="GET" action="{{ url_for('admin.get_daily_analytics') }}" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <label for="date" style="font-weight: 600;">Select Date:</label>
+            <input type="date" id="date" name="date" class="form-control" style="width: auto; padding: 6px 12px;" 
+                   value="{{ date or '' }}">
+            <button type="submit" class="btn btn-primary btn-sm">
+                <i class="fas fa-chart-bar"></i> View Analytics
+            </button>
+            <a href="{{ url_for('admin.get_daily_analytics') }}" class="btn btn-outline btn-sm">Today</a>
+        </form>
+    </div>
+    
+    {% if analytics %}
+        <!-- Daily Stats -->
+        <div class="admin-stats">
+            <div class="admin-stat-card">
+                <span class="number">{{ analytics.total_reviews }}</span>
+                <span class="label">Reviews</span>
+            </div>
+            <div class="admin-stat-card">
+                <span class="number">{{ analytics.total_comments }}</span>
+                <span class="label">Comments</span>
+            </div>
+            <div class="admin-stat-card">
+                <span class="number">{{ analytics.total_likes or 0 }}</span>
+                <span class="label">Likes</span>
+            </div>
+            <div class="admin-stat-card">
+                <span class="number">{{ analytics.total_new_users }}</span>
+                <span class="label">New Users</span>
+            </div>
+            <div class="admin-stat-card">
+                <span class="number">{{ analytics.active_users }}</span>
+                <span class="label">Active Users</span>
+            </div>
+            <div class="admin-stat-card">
+                <span class="number">{{ analytics.total_reports or 0 }}</span>
+                <span class="label">Reports</span>
+            </div>
+        </div>
+        
+        <!-- Averages -->
+        <div class="admin-stats" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
+            <div class="admin-stat-card">
+                <span class="number">{{ "%.2f"|format(analytics.avg_reviews_per_user or 0) }}</span>
+                <span class="label">Avg Reviews/User</span>
+            </div>
+            <div class="admin-stat-card">
+                <span class="number">{{ "%.2f"|format(analytics.avg_comments_per_review or 0) }}</span>
+                <span class="label">Avg Comments/Review</span>
+            </div>
+        </div>
+        
+        <!-- Genre Distribution -->
+        {% if analytics.genre_distribution %}
+            <div class="chart-container">
+                <h3>Genre Distribution</h3>
+                <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px;">
+                    {% for genre, count in analytics.genre_distribution.items() %}
+                        <div style="background: var(--bg-color); padding: 12px; border-radius: var(--radius); text-align: center;">
+                            <div style="font-weight: 700; font-size: 1.2rem;">{{ count }}</div>
+                            <div style="color: var(--gray-color); font-size: 0.85rem;">{{ genre }}</div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+        
+        <!-- Rating Distribution -->
+        {% if analytics.rating_distribution %}
+            <div class="chart-container">
+                <h3>Rating Distribution</h3>
+                <div style="display: flex; gap: 8px; align-items: flex-end; height: 200px; padding: 20px 0;">
+                    {% for rating, count in analytics.rating_distribution.items()|sort %}
+                        {% set max_count = analytics.rating_distribution.values()|max or 1 %}
+                        {% set height = (count / max_count * 100)|int %}
+                        <div style="flex: 1; display: flex; flex-direction: column; align-items: center;">
+                            <div class="rating-bar" data-height="{{ height }}"></div>
+                            <div style="font-size: 0.7rem; margin-top: 4px;">{{ rating }}</div>
+                            <div style="font-size: 0.7rem; color: var(--gray-color);">{{ count }}</div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+        
+    {% else %}
+        <div class="card text-center" style="padding: 60px 20px;">
+            <i class="fas fa-chart-line" style="font-size: 3rem; color: var(--gray-color); margin-bottom: 16px;"></i>
+            <h3 style="margin-bottom: 8px;">No analytics data</h3>
+            <p style="color: var(--gray-color);">Click "Calculate Today" to generate analytics for the selected date</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.rating-bar').forEach(el => {
+        const h = parseInt(el.dataset.height, 10) || 4;
+        el.style.height = h + 'px';
+    });
+});
+async function calculateDaily() {
+    try {
+        const date = document.getElementById('date').value || '';
+        const response = await axios.post('/api/admin/analytics/calculate-daily', { date: date });
+        
+        if (response.data.success) {
+            showFlashMessage('success', response.data.message);
+            setTimeout(() => location.reload(), 1500);
+        }
+    } catch (error) {
+        showFlashMessage('error', 'Failed to calculate analytics');
+    }
+}
+</script>
+{% endblock %}

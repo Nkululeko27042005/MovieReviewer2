@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block title %}Notifications - MovieReviewer{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h1>Notifications</h1>
+        {% if unread_count > 0 %}
+            <button onclick="markAllRead()" class="btn btn-primary btn-sm">
+                <i class="fas fa-check-double"></i> Mark All Read
+            </button>
+        {% endif %}
+    </div>
+    
+    {% if notifications %}
+        <div class="notification-list">
+            {% for notification in notifications %}
+                <div class="notification-item {% if notification.status.value == 'unread' %}unread{% else %}read{% endif %}"
+                     id="notification-{{ notification.id }}">
+                    <div class="notification-icon">
+                        <i class="fas fa-{% if notification.type.value == 'follow' %}user-plus{% elif notification.type.value == 'like' %}heart{% elif notification.type.value == 'comment' %}comment{% elif notification.type.value == 'new_review_from_followed' %}film{% else %}bell{% endif %}"></i>
+                    </div>
+                    <div class="notification-content">
+                        <div class="title">
+                            {% if notification.source_user %}
+                                <a href="{{ url_for('users.get_user_profile', user_id=notification.source_user.id) }}">
+                                    {{ notification.source_user.username }}
+                                </a>
+                            {% endif %}
+                            {{ notification.title|replace(notification.source_user.username|default(''), '') }}
+                        </div>
+                        <div class="message">{{ notification.message }}</div>
+                        <div class="time">{{ notification.created_at.strftime('%B %d, %Y at %I:%M %p') }}</div>
+                    </div>
+                    {% if notification.review_id %}
+                        <a href="{{ url_for('reviews.get_review', review_id=notification.review_id) }}" class="btn btn-outline btn-sm">
+                            View Review
+                        </a>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+        
+        <!-- Pagination -->
+        {% if pagination and (pagination.has_prev or pagination.has_next) %}
+            <div class="pagination">
+                {% if pagination.has_prev %}
+                    <a href="{{ url_for('users.get_notifications', page=pagination.prev_num) }}">&laquo; Previous</a>
+                {% endif %}
+                <span class="active">{{ pagination.page }}</span>
+                {% if pagination.has_next %}
+                    <a href="{{ url_for('users.get_notifications', page=pagination.next_num) }}">Next &raquo;</a>
+                {% endif %}
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="card text-center" style="padding: 60px 20px;">
+            <i class="fas fa-bell" style="font-size: 3rem; color: var(--gray-color); margin-bottom: 16px;"></i>
+            <h3 style="margin-bottom: 8px;">No notifications</h3>
+            <p style="color: var(--gray-color);">You're all caught up!</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+async function markAllRead() {
+    try {
+        const response = await axios.post('/api/users/notifications/read-all');
+        if (response.data.success) {
+            showFlashMessage('success', response.data.message);
+            // Update all notification items
+            document.querySelectorAll('.notification-item.unread').forEach(item => {
+                item.classList.remove('unread');
+                item.classList.add('read');
+            });
+            document.getElementById('notificationBadge').style.display = 'none';
+        }
+    } catch (error) {
+        showFlashMessage('error', 'Failed to mark notifications as read');
+    }
+}
+</script>
+{% endblock %}

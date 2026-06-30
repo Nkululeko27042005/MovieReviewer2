@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Followers - MovieReviewer{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 0 auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h1>Followers</h1>
+        <a href="{{ url_for('views.profile_page', user_id=user_id) }}" class="btn btn-outline btn-sm">
+            <i class="fas fa-arrow-left"></i> Back to Profile
+        </a>
+    </div>
+    
+    {% if followers.items %}
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+            {% for follower in followers.items %}
+                <div class="card" style="display: flex; align-items: center; gap: 16px; padding: 16px 20px;">
+                    <img src="{{ follower.profile_picture or url_for('static', filename='images/default-avatar.png') }}" 
+                         style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+                    <div style="flex: 1;">
+                        <a href="{{ url_for('views.profile_page', user_id=follower.id) }}" style="font-weight: 600; font-size: 1.05rem;">
+                            {{ follower.username }}
+                        </a>
+                        {% if follower.bio %}
+                            <p style="color: var(--gray-color); font-size: 0.9rem; margin-top: 2px;">{{ follower.bio[:100] }}{% if follower.bio|length > 100 %}...{% endif %}</p>
+                        {% endif %}
+                    </div>
+                    {% if current_user.is_authenticated and current_user.id != follower.id %}
+                        <button type="button" data-user-id="{{ follower.id }}"
+                                class="btn {% if current_user.is_following(follower) %}btn-outline{% else %}btn-primary{% endif %} btn-sm follow-toggle-btn"
+                                id="follow-btn-{{ follower.id }}">
+                            <span id="follow-text-{{ follower.id }}">
+                                {% if current_user.is_following(follower) %}Unfollow{% else %}Follow{% endif %}
+                            </span>
+                        </button>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+        
+        {% if followers.has_prev or followers.has_next %}
+            <div class="pagination">
+                {% if followers.has_prev %}
+                    <a href="{{ url_for('views.followers_page', user_id=user_id, page=followers.prev_num) }}">&laquo; Previous</a>
+                {% endif %}
+                <span class="active">{{ followers.page }}</span>
+                {% if followers.has_next %}
+                    <a href="{{ url_for('views.followers_page', user_id=user_id, page=followers.next_num) }}">Next &raquo;</a>
+                {% endif %}
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="card text-center" style="padding: 40px 20px;">
+            <p style="color: var(--gray-color);">No followers yet</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.follow-toggle-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            toggleFollow(button.dataset.userId);
+        });
+    });
+});
+async function toggleFollow(userId) {
+    const btn = document.getElementById(`follow-btn-${userId}`);
+    const textSpan = document.getElementById(`follow-text-${userId}`);
+    const isFollowing = btn.classList.contains('btn-outline');
+    
+    try {
+        const response = await axios({
+            method: isFollowing ? 'DELETE' : 'POST',
+            url: `/api/users/${userId}/follow`
+        });
+        
+        if (response.data.success) {
+            if (isFollowing) {
+                btn.classList.remove('btn-outline');
+                btn.classList.add('btn-primary');
+                textSpan.textContent = 'Follow';
+            } else {
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-outline');
+                textSpan.textContent = 'Unfollow';
+            }
+            showFlashMessage('success', response.data.message);
+        }
+    } catch (error) {
+        showFlashMessage('error', 'Failed to follow/unfollow user');
+    }
+}
+</script>
+{% endblock %}

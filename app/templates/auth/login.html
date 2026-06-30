@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+
+{% block title %}Login - MovieReviewer{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <div class="auth-container">
+        <div class="auth-header">
+            <h1>Welcome Back</h1>
+            <p>Login to continue your movie journey</p>
+        </div>
+        
+        <form method="POST" action="{{ url_for('views.login_page') }}" id="loginForm">
+            {{ form.hidden_tag() }}
+            
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" class="form-control" 
+                       placeholder="Enter your email" required>
+                {% if form.email.errors %}
+                    <div class="error-text">{{ form.email.errors[0] }}</div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" class="form-control" 
+                       placeholder="Enter your password" required>
+                {% if form.password.errors %}
+                    <div class="error-text">{{ form.password.errors[0] }}</div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 8px; font-weight: 400;">
+                    <input type="checkbox" name="remember_me" id="remember_me" value="y">
+                    Remember Me
+                </label>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-block btn-lg">
+                <i class="fas fa-sign-in-alt"></i> Login
+            </button>
+        </form>
+        
+        <div class="auth-divider">or</div>
+        
+        <div class="auth-footer">
+            Don't have an account? <a href="{{ url_for('views.register_page') }}">Sign Up</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('loginForm').addEventListener('submit', function(e) {
+    if (!validateForm(this)) {
+        e.preventDefault();
+    }
+});
+</script>
+{% endblock %}

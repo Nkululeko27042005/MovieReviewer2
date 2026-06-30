@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+
+{% block title %}{{ user.username }} - MovieReviewer{% endblock %}
+
+{% block content %}
+{% from '_macros.html' import render_review_card %}
+<div style="max-width: 1000px; margin: 0 auto;">
+    <!-- Profile Header -->
+    <div class="profile-header">
+        <img src="{{ user.profile_picture or url_for('static', filename='images/default-avatar.png') }}" 
+             class="profile-avatar" alt="{{ user.username }}">
+        <div class="profile-info">
+            <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
+                <h1>{{ user.username }}</h1>
+                <span class="status-badge" style="background: rgba(108, 99, 255, 0.1); color: var(--primary-color);">
+                    {{ user.user_type.value|title }}
+                </span>
+                {% if user.id == current_user.id %}
+                    <a href="{{ url_for('views.edit_profile_page') }}" class="btn btn-outline btn-sm">
+                        <i class="fas fa-edit"></i> Edit Profile
+                    </a>
+                {% elif current_user.is_authenticated and current_user.id != user.id %}
+                    <button class="btn {% if is_following %}btn-outline{% else %}btn-primary{% endif %} btn-sm" id="followBtn" data-user-id="{{ user.id }}">
+                        <i class="fas {% if is_following %}fa-user-minus{% else %}fa-user-plus{% endif %}"></i>
+                        <span id="followBtnText">{% if is_following %}Unfollow{% else %}Follow{% endif %}</span>
+                    </button>
+                {% endif %}
+            </div>
+            
+            {% if user.bio %}
+                <p class="profile-bio">{{ user.bio }}</p>
+            {% endif %}
+            
+            <div class="profile-stats">
+                <div class="stat">
+                    <span class="stat-number">{{ reviews.total }}</span>
+                    <span class="stat-label">Reviews</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-number">{{ user.followers.count() }}</span>
+                    <span class="stat-label">Followers</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-number">{{ user.following.count() }}</span>
+                    <span class="stat-label">Following</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-number">{{ user.reviews | sum(attribute='likes_count') }}</span>
+                    <span class="stat-label">Total Likes</span>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+                <a href="{{ url_for('views.followers_page', user_id=user.id) }}" class="btn btn-outline btn-sm">
+                    <i class="fas fa-users"></i> View Followers
+                </a>
+                <a href="{{ url_for('views.following_page', user_id=user.id) }}" class="btn btn-outline btn-sm">
+                    <i class="fas fa-user-friends"></i> View Following
+                </a>
+                {% if user.id == current_user.id %}
+                    <a href="{{ url_for('views.saved_reviews_page') }}" class="btn btn-outline btn-sm">
+                        <i class="fas fa-bookmark"></i> Saved Reviews
+                    </a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- User Analytics (if viewing own profile) -->
+    {% if user.id == current_user.id and analytics %}
+        <div class="card" style="margin-bottom: 24px;">
+            <h3 style="margin-bottom: 16px;">Your Analytics</h3>
+            <div class="admin-stats">
+                <div class="admin-stat-card">
+                    <span class="number">{{ analytics.total_reviews_all_time or 0 }}</span>
+                    <span class="label">Total Reviews</span>
+                </div>
+                <div class="admin-stat-card">
+                    <span class="number">{{ analytics.total_likes_all_time or 0 }}</span>
+                    <span class="label">Likes Received</span>
+                </div>
+                <div class="admin-stat-card">
+                    <span class="number">{{ analytics.total_followers or 0 }}</span>
+                    <span class="label">Followers</span>
+                </div>
+                <div class="admin-stat-card">
+                    <span class="number">{{ "%.1f"|format(analytics.avg_reviews_per_day or 0) }}</span>
+                    <span class="label">Avg Reviews/Day</span>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+    
+    <!-- User Reviews -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+        <h2>Reviews</h2>
+        <div style="display: flex; gap: 8px; align-items: center;">
+            <label for="sortBy" style="font-size: 0.85rem; color: var(--gray-color);">Sort by:</label>
+            <select id="sortBy" data-base-url="{{ url_for('views.profile_page', user_id=user.id) }}" style="padding: 4px 12px; border-radius: 8px; border: 1px solid var(--light-gray);">
+                <option value="newest" {% if sort_by == 'newest' %}selected{% endif %}>Newest</option>
+                <option value="oldest" {% if sort_by == 'oldest' %}selected{% endif %}>Oldest</option>
+                <option value="top_rated" {% if sort_by == 'top_rated' %}selected{% endif %}>Top Rated</option>
+                <option value="most_liked" {% if sort_by == 'most_liked' %}selected{% endif %}>Most Liked</option>
+                <option value="most_commented" {% if sort_by == 'most_commented' %}selected{% endif %}>Most Commented</option>
+            </select>
+        </div>
+    </div>
+    
+    {% if reviews.items %}
+        <div class="infinite-scroll-container" data-load-more="{{ url_for('users.get_user_reviews', user_id=user.id, sort_by=sort_by) }}">
+            {% for review in reviews.items %}
+                {{ render_review_card(review) }}
+            {% endfor %}
+            
+            <div class="load-more-trigger" style="height: 20px;"></div>
+            <div class="load-more-end hidden" style="text-align: center; padding: 20px; color: var(--gray-color);">
+                <i class="fas fa-check-circle"></i> All reviews loaded
+            </div>
+        </div>
+    {% else %}
+        <div class="card text-center" style="padding: 40px 20px;">
+            <p style="color: var(--gray-color);">No reviews yet</p>
+            {% if user.id == current_user.id and current_user.is_authenticated and current_user.can_create_reviews() %}
+                <a href="{{ url_for('views.create_review_page') }}" class="btn btn-primary" style="margin-top: 12px;">
+                    <i class="fas fa-plus"></i> Write Your First Review
+                </a>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+
+{% macro render_review_card(review) %}
+<div class="review-card" data-review-id="{{ review.id }}">
+    <div class="review-card-header">
+        <div class="review-author">
+            <div class="review-author-info">
+                <span class="review-author-name">{{ review.title }}</span>
+                <span class="review-date">{{ review.published_at.strftime('%B %d, %Y') }}</span>
+            </div>
+        </div>
+        <div class="review-rating-badge">
+            <i class="fas fa-star"></i>
+            {{ "%.1f"|format(review.overall_rating) }}
+        </div>
+    </div>
+    <div class="review-body">
+        <div class="review-movie"><i class="fas fa-film"></i> {{ review.movie_name }}</div>
+        <p class="review-summary">{{ review.overall_thoughts[:200] }}{% if review.overall_thoughts|length > 200 %}...{% endif %}</p>
+    </div>
+    <div class="review-footer">
+        <div class="review-actions">
+            <span class="review-action-btn">
+                <i class="fas fa-heart"></i> {{ review.likes_count }}
+            </span>
+            <span class="review-action-btn">
+                <i class="fas fa-comment"></i> {{ review.comments_count }}
+            </span>
+        </div>
+        <a href="{{ url_for('views.review_detail_page', review_id=review.id) }}" class="btn btn-outline btn-sm">Read More</a>
+    </div>
+</div>
+{% endmacro %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const followButton = document.getElementById('followBtn');
+    if (followButton) {
+        followButton.addEventListener('click', async () => {
+            const userId = followButton.dataset.userId;
+            await toggleFollow(userId);
+        });
+    }
+
+    const sortBySelect = document.getElementById('sortBy');
+    if (sortBySelect) {
+        sortBySelect.addEventListener('change', () => {
+            const baseUrl = sortBySelect.dataset.baseUrl;
+            location.href = `${baseUrl}?sort=${encodeURIComponent(sortBySelect.value)}`;
+        });
+    }
+});
+
+async function toggleFollow(userId) {
+    const btn = document.getElementById('followBtn');
+    const isFollowing = btn.classList.contains('btn-outline');
+
+    try {
+        const response = await axios({
+            method: isFollowing ? 'DELETE' : 'POST',
+            url: `/api/users/${userId}/follow`
+        });
+
+        if (response.data.success) {
+            if (isFollowing) {
+                btn.classList.remove('btn-outline');
+                btn.classList.add('btn-primary');
+                btn.querySelector('i').className = 'fas fa-user-plus';
+                document.getElementById('followBtnText').textContent = 'Follow';
+            } else {
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-outline');
+                btn.querySelector('i').className = 'fas fa-user-minus';
+                document.getElementById('followBtnText').textContent = 'Unfollow';
+            }
+            showFlashMessage('success', response.data.message);
+        }
+    } catch (error) {
+        showFlashMessage('error', 'Failed to follow/unfollow user');
+    }
+}
+</script>
+{% endblock %}

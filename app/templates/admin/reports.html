@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - Admin - MovieReviewer{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 1200px; margin: 0 auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h1>Reports Management</h1>
+        <div style="display: flex; gap: 8px;">
+            <a href="{{ url_for('admin.get_all_users') }}" class="btn btn-outline btn-sm">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+    
+    <!-- Filter -->
+    <div class="card" style="margin-bottom: 20px;">
+        <form method="GET" action="{{ url_for('admin.get_all_reports') }}" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <label for="status" style="font-weight: 600;">Filter by Status:</label>
+            <select name="status" id="status" class="form-control" style="width: auto; padding: 6px 12px;" onchange="this.form.submit()">
+                <option value="">All</option>
+                <option value="pending" {% if status == 'pending' %}selected{% endif %}>Pending</option>
+                <option value="reviewing" {% if status == 'reviewing' %}selected{% endif %}>Reviewing</option>
+                <option value="resolved" {% if status == 'resolved' %}selected{% endif %}>Resolved</option>
+                <option value="dismissed" {% if status == 'dismissed' %}selected{% endif %}>Dismissed</option>
+            </select>
+        </form>
+    </div>
+    
+    <!-- Reports Table -->
+    <div class="card">
+        {% if reports.items %}
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Reporter</th>
+                        <th>Reported User</th>
+                        <th>Reason</th>
+                        <th>Status</th>
+                        <th>Date</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for report in reports.items %}
+                        <tr id="report-{{ report.id }}">
+                            <td>#{{ report.id }}</td>
+                            <td>
+                                <a href="{{ url_for('users.get_user_profile', user_id=report.reporter.id) }}">
+                                    {{ report.reporter.username }}
+                                </a>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('users.get_user_profile', user_id=report.reported_user.id) }}">
+                                    {{ report.reported_user.username }}
+                                </a>
+                            </td>
+                            <td>{{ report.reason.value|replace('_', ' ')|title }}</td>
+                            <td><span class="status-badge {{ report.status.value }}">{{ report.status.value|title }}</span></td>
+                            <td>{{ report.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            <td>
+                                {% if report.status.value == 'pending' %}
+                                    <button type="button" data-report-id="{{ report.id }}" class="btn btn-primary btn-sm report-handle-btn">
+                                        <i class="fas fa-gavel"></i> Handle
+                                    </button>
+                                {% else %}
+                                    <button type="button" data-report-id="{{ report.id }}" class="btn btn-outline btn-sm report-view-btn">
+                                        <i class="fas fa-eye"></i> View
+                                    </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            <!-- Pagination -->
+            {% if reports.has_prev or reports.has_next %}
+                <div class="pagination">
+                    {% if reports.has_prev %}
+                        <a href="{{ url_for('admin.get_all_reports', page=reports.prev_num, status=status) }}">&laquo; Previous</a>
+                    {% endif %}
+                    <span class="active">{{ reports.page }}</span>
+                    {% if reports.has_next %}
+                        <a href="{{ url_for('admin.get_all_reports', page=reports.next_num, status=status) }}">Next &raquo;</a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        {% else %}
+            <p style="text-align: center; padding: 40px; color: var(--gray-color);">
+                <i class="fas fa-check-circle" style="font-size: 2rem; display: block; margin-bottom: 12px;"></i>
+                No reports found
+            </p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Report Handling Modal -->
+<div class="modal-overlay" id="reportModal">
+    <div class="modal" style="max-width: 500px;">
+        <div class="modal-header">
+            <h3>Handle Report #<span id="reportModalId"></span></h3>
+            <button class="modal-close" onclick="closeModal('reportModal')">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="reportForm">
+                <input type="hidden" id="reportId" name="report_id">
+                
+                <div class="form-group">
+                    <label for="action">Action</label>
+                    <select id="action" name="action" class="form-control" required>
+                        <option value="dismiss">Dismiss Report</option>
+                        <option value="warning">Issue Warning</option>
+                        <option value="suspend_3days">Suspend for 3 Days</option>
+                        <option value="suspend_7days">Suspend for 7 Days</option>
+                        <option value="suspend_30days">Suspend for 30 Days</option>
+                        <option value="permanent_ban">Permanent Ban</option>
+                        <option value="deactivate">Deactivate Account</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="admin_notes">Admin Notes</label>
+                    <textarea id="admin_notes" name="admin_notes" class="form-control" rows="3" 
+                              placeholder="Add notes about this report..."></textarea>
+                </div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeModal('reportModal')">Cancel</button>
+            <button class="btn btn-primary" onclick="submitReportAction()">
+                <i class="fas fa-check"></i> Apply Action
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function handleReport(reportId) {
+    document.getElementById('reportModalId').textContent = reportId;
+    document.getElementById('reportId').value = reportId;
+    openModal('reportModal');
+}
+
+function viewReport(reportId) {
+    // Show report details in a modal or redirect
+    alert('Report #' + reportId + ' - View details functionality');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.report-handle-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            handleReport(button.dataset.reportId);
+        });
+    });
+
+    document.querySelectorAll('.report-view-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            viewReport(button.dataset.reportId);
+        });
+    });
+});
+
+async function submitReportAction() {
+    const reportId = document.getElementById('reportId').value;
+    const form = document.getElementById('reportForm');
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData);
+    
+    try {
+        const response = await axios.put(`/api/admin/reports/${reportId}/handle`, data);
+        if (response.data.success) {
+            closeModal('reportModal');
+            showFlashMessage('success', response.data.message);
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showFlashMessage('error', response.data.message);
+        }
+    } catch (error) {
+        showFlashMessage('error', 'Failed to handle report');
+    }
+}
+</script>
+{% endblock %}

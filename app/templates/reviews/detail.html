@@ -1,0 +1,417 @@
+{% extends "base.html" %}
+
+{% block title %}{{ review.title }} - MovieReviewer{% endblock %}
+
+{% block extra_css %}
+<style>
+.review-detail .review-rating-badge {
+    font-size: 1.2rem;
+    padding: 10px 20px;
+}
+.review-detail .review-title {
+    font-size: 2rem;
+}
+.performance-ratings {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin: 20px 0;
+}
+.performance-rating-item {
+    background: var(--bg-color);
+    padding: 12px 16px;
+    border-radius: var(--radius);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.performance-rating-item .label {
+    font-weight: 600;
+    color: var(--gray-color);
+}
+.performance-rating-item .value {
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+.moment-detail {
+    background: var(--white);
+    border: 1px solid var(--light-gray);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 12px;
+}
+.moment-detail .moment-images {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
+    margin-top: 10px;
+}
+.moment-detail .moment-images img {
+    width: 100%;
+    height: 150px;
+    object-fit: cover;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: var(--transition);
+}
+.moment-detail .moment-images img:hover {
+    transform: scale(1.03);
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="review-detail">
+    <!-- Review Header -->
+    <div class="card" style="margin-bottom: 24px; display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start;">
+        {% if review.movie_poster_url %}
+        <div style="flex-shrink: 0; width: 100%; max-width: 250px; margin: 0 auto;">
+            <img src="{{ review.movie_poster_url }}" alt="Movie Poster" style="width: 100%; border-radius: var(--radius); box-shadow: var(--shadow); object-fit: cover;">
+        </div>
+        {% endif %}
+        <div style="flex: 1; min-width: 300px;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px;">
+            <div>
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                    <span class="review-rating-badge stars-display" style="font-size: 1.2rem; padding: 10px 20px;">
+                        {% for i in range(1, 11) %}
+                            {% if i <= review.overall_rating|int %}
+                                <i class="fas fa-star" style="color: var(--warning-color);"></i>
+                            {% else %}
+                                <i class="far fa-star" style="color: var(--warning-color);"></i>
+                            {% endif %}
+                        {% endfor %}
+                        <span style="margin-left: 8px; font-size: 0.9em;">({{ review.overall_rating }})</span>
+                    </span>
+                    {% if review.has_spoilers %}
+                        <span class="review-spoiler"><i class="fas fa-exclamation-triangle"></i> Contains Spoilers</span>
+                    {% endif %}
+                </div>
+                <h1 class="review-title">{{ review.title }}</h1>
+                <div class="review-movie" style="font-size: 1.1rem;">
+                    <i class="fas fa-film"></i> {{ review.movie_name }}
+                </div>
+                <div class="review-genres" style="margin-top: 8px;">
+                    {% for genre in review.genres %}
+                        <span class="genre-tag">{{ genre }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+            <div style="text-align: right;">
+                <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                    <img src="{{ review.author.profile_picture or url_for('static', filename='images/default-avatar.png') }}" 
+                         style="width: 50px; height: 50px; border-radius: 50%; object-fit: cover;">
+                    <div>
+                        <a href="{{ url_for('views.profile_page', user_id=review.author.id) }}" style="font-weight: 600;">
+                            {{ review.author.username }}
+                        </a>
+                        <div style="font-size: 0.8rem; color: var(--gray-color);">
+                            {{ review.published_at.strftime('%B %d, %Y') }}
+                        </div>
+                    </div>
+                </div>
+                {% if current_user.is_authenticated and (current_user.id == review.author.id or current_user.user_type.value == 'admin') %}
+                    <div style="display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px;">
+                        <a href="{{ url_for('views.edit_review_page', review_id=review.id) }}" class="btn btn-primary btn-sm">
+                            <i class="fas fa-edit"></i> Edit
+                        </a>
+                        <button type="button" onclick="deleteReview({{ review.id }})" class="btn btn-danger btn-sm">
+                            <i class="fas fa-trash"></i> Delete
+                        </button>
+                    </div>
+                {% endif %}
+            </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Performance Ratings -->
+    <div class="card" style="margin-bottom: 24px;">
+        <h3>Performance Ratings</h3>
+        <div class="performance-ratings">
+            <div class="performance-rating-item">
+                <span class="label">Acting</span>
+                <span class="value">{{ review.acting_rating }}/10</span>
+            </div>
+            <div class="performance-rating-item">
+                <span class="label">Cast Selection</span>
+                <span class="value">{{ review.cast_selection_rating }}/10</span>
+            </div>
+            <div class="performance-rating-item">
+                <span class="label">Pacing</span>
+                <span class="value">{{ review.pacing_rating }}/10</span>
+            </div>
+            <div class="performance-rating-item">
+                <span class="label">Plot/Premise</span>
+                <span class="value">{{ review.plot_rating }}/10</span>
+            </div>
+            <div class="performance-rating-item" style="grid-column: 1 / -1; background: var(--primary-color); color: white;">
+                <span class="label" style="color: rgba(255,255,255,0.8);">Average Performance Score</span>
+                <span class="value">{{ review.calculate_average_rating()|round(1) }}/10</span>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Overall Thoughts -->
+    <div class="card" style="margin-bottom: 24px;">
+        <h3>Overall Thoughts</h3>
+        <p style="line-height: 1.8; color: var(--gray-color);">{{ review.overall_thoughts }}</p>
+    </div>
+    
+    <!-- Good Moments -->
+    {% if review.good_moments.count() > 0 %}
+        <div class="card" style="margin-bottom: 24px; border-left: 4px solid var(--success-color);">
+            <h3 style="color: var(--success-color);">
+                <i class="fas fa-thumbs-up"></i> Good Moments
+            </h3>
+            {% for moment in review.good_moments %}
+                <div class="moment-detail">
+                    <p><strong>{{ moment.description }}</strong></p>
+                    {% if moment.scene_description %}
+                        <p style="color: var(--gray-color); font-size: 0.95rem;">{{ moment.scene_description }}</p>
+                    {% endif %}
+                    {% if moment.image_urls %}
+                        <div class="moment-images">
+                            {% for url in moment.image_urls %}
+                                <img src="{{ url }}" alt="Good moment" onclick="openImageModal(this.src)">
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+    
+    <!-- Bad Moments -->
+    {% if review.bad_moments.count() > 0 %}
+        <div class="card" style="margin-bottom: 24px; border-left: 4px solid var(--danger-color);">
+            <h3 style="color: var(--danger-color);">
+                <i class="fas fa-thumbs-down"></i> Bad Moments
+            </h3>
+            {% for moment in review.bad_moments %}
+                <div class="moment-detail">
+                    <p><strong>{{ moment.description }}</strong></p>
+                    {% if moment.scene_description %}
+                        <p style="color: var(--gray-color); font-size: 0.95rem;">{{ moment.scene_description }}</p>
+                    {% endif %}
+                    {% if moment.image_urls %}
+                        <div class="moment-images">
+                            {% for url in moment.image_urls %}
+                                <img src="{{ url }}" alt="Bad moment" onclick="openImageModal(this.src)">
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+    
+    <!-- Review Actions -->
+    <div class="card" style="margin-bottom: 24px;">
+        <div style="display: flex; gap: 24px; flex-wrap: wrap;">
+            <button class="review-action-btn like-btn" onclick="toggleLike({{ review.id }})" style="font-size: 1.1rem;">
+                <i class="fas fa-heart {% if is_liked %}liked{% endif %}"></i>
+                <span class="like-count">{{ review.likes_count }}</span> Likes
+            </button>
+            <button class="review-action-btn" onclick="toggleSave({{ review.id }})" style="font-size: 1.1rem;">
+                <i class="fas fa-bookmark {% if is_saved %}saved{% endif %}"></i>
+                <span class="save-count">{{ review.saves_count }}</span> Saves
+            </button>
+            <div style="color: var(--gray-color); font-size: 0.9rem;">
+                <i class="fas fa-eye"></i> {{ review.views_count }} Views
+            </div>
+        </div>
+    </div>
+    
+    <!-- Comments Section -->
+    <div id="comments-{{ review.id }}" class="card">
+        <h3 style="margin-bottom: 20px;">
+            <i class="fas fa-comments"></i> Comments ({{ review.comments_count }})
+        </h3>
+        
+        <!-- Comment Form -->
+        {% if current_user.is_authenticated %}
+            <div class="comment-form" style="margin-bottom: 24px;">
+                <img src="{{ current_user.profile_picture or url_for('static', filename='images/default-avatar.png') }}" 
+                     class="comment-avatar">
+                <form method="POST" action="{{ url_for('views.add_comment_page', review_id=review.id) }}" style="flex: 1; display: flex; flex-direction: column; gap: 8px;">
+                    {{ comment_form.hidden_tag() }}
+                    <textarea name="content" class="form-control" rows="3" 
+                              placeholder="Write a comment..." required></textarea>
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <button type="submit" class="btn btn-primary btn-sm">
+                            <i class="fas fa-paper-plane"></i> Comment
+                        </button>
+                        <label style="display: flex; align-items: center; gap: 4px; font-weight: 400; font-size: 0.85rem;">
+                            <input type="checkbox" name="has_emoji" value="y"> Emoji
+                        </label>
+                        <label style="display: flex; align-items: center; gap: 4px; font-weight: 400; font-size: 0.85rem;">
+                            <input type="checkbox" name="has_gif" value="y" onchange="document.getElementById('gifUrlInput').style.display = this.checked ? 'block' : 'none'"> GIF
+                        </label>
+                        <input type="text" id="gifUrlInput" name="gif_url" class="form-control" 
+                               style="display: none; width: 200px;" placeholder="GIF URL">
+                    </div>
+                </form>
+            </div>
+        {% else %}
+            <p style="color: var(--gray-color);">Please <a href="{{ url_for('views.login_page') }}">login</a> to comment</p>
+        {% endif %}
+        
+        <!-- Comments List -->
+        <div class="comment-list">
+            {% for comment in comments %}
+                <div class="comment" id="comment-{{ comment.id }}">
+                    <img src="{{ comment.author.profile_picture or url_for('static', filename='images/default-avatar.png') }}" 
+                         class="comment-avatar">
+                    <div class="comment-body">
+                        <div class="comment-header">
+                            <span class="comment-author">
+                                <a href="{{ url_for('views.profile_page', user_id=comment.author.id) }}">{{ comment.author.username }}</a>
+                            </span>
+                            <span class="comment-time">{{ comment.created_at.strftime('%b %d, %Y at %I:%M %p') }}</span>
+                        </div>
+                        <div class="comment-content">{{ comment.content }}</div>
+                        {% if comment.gif_url %}
+                            <img src="{{ comment.gif_url }}" class="comment-gif" alt="GIF">
+                        {% endif %}
+                        <div class="comment-actions">
+                            <button class="comment-action-btn" onclick="likeComment({{ comment.id }})">
+                                <i class="fas fa-heart"></i> <span id="comment-likes-{{ comment.id }}">{{ comment.likes_count }}</span>
+                            </button>
+                            <button class="comment-action-btn" onclick="showReplyForm({{ comment.id }})">
+                                <i class="fas fa-reply"></i> Reply
+                            </button>
+                            {% if current_user.is_authenticated and (current_user.id == comment.author.id or current_user.user_type.value == 'admin') %}
+                                <button class="comment-action-btn" onclick="deleteComment({{ comment.id }})" style="color: var(--danger-color);">
+                                    <i class="fas fa-trash"></i> Delete
+                                </button>
+                            {% endif %}
+                        </div>
+                        
+                        <!-- Reply Form (hidden) -->
+                        <div id="reply-form-{{ comment.id }}" style="display: none; margin-top: 12px;">
+                            <form method="POST" action="{{ url_for('views.add_comment_page', review_id=review.id) }}" style="display: flex; gap: 8px;">
+                                <input type="hidden" name="parent_comment_id" value="{{ comment.id }}">
+                                <input type="text" name="content" class="form-control" placeholder="Write a reply..." required>
+                                <button type="submit" class="btn btn-primary btn-sm">Reply</button>
+                                <button type="button" class="btn btn-outline btn-sm" onclick="hideReplyForm({{ comment.id }})">Cancel</button>
+                            </form>
+                        </div>
+                        
+                        <!-- Replies -->
+                        {% if comment.replies %}
+                            <div class="comment-replies">
+                                {% for reply in comment.replies %}
+                                    <div class="comment" id="comment-{{ reply.id }}">
+                                        <img src="{{ reply.author.profile_picture or url_for('static', filename='images/default-avatar.png') }}" 
+                                             class="comment-avatar" style="width: 32px; height: 32px;">
+                                        <div class="comment-body">
+                                            <div class="comment-header">
+                                                <span class="comment-author">
+                                                    <a href="{{ url_for('views.profile_page', user_id=reply.author.id) }}">{{ reply.author.username }}</a>
+                                                </span>
+                                                <span class="comment-time">{{ reply.created_at.strftime('%b %d, %Y at %I:%M %p') }}</span>
+                                            </div>
+                                            <div class="comment-content">{{ reply.content }}</div>
+                                            {% if reply.gif_url %}
+                                                <img src="{{ reply.gif_url }}" class="comment-gif" alt="GIF">
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+            
+            {% if comments.has_prev or comments.has_next %}
+                <div class="pagination">
+                    {% if comments.has_prev %}
+                        <a href="{{ url_for('views.review_detail_page', review_id=review.id, page=comments.prev_num) }}">&laquo; Previous</a>
+                    {% endif %}
+                    <span class="active">{{ comments.page }}</span>
+                    {% if comments.has_next %}
+                        <a href="{{ url_for('views.review_detail_page', review_id=review.id, page=comments.next_num) }}">Next &raquo;</a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Image Modal -->
+<div class="modal-overlay" id="imageModal" onclick="closeImageModal()">
+    <div class="modal" onclick="event.stopPropagation()" style="max-width: 800px;">
+        <div class="modal-header">
+            <h3>Image Preview</h3>
+            <button class="modal-close" onclick="closeImageModal()">&times;</button>
+        </div>
+        <div class="modal-body" style="text-align: center;">
+            <img id="modalImage" src="" alt="Preview" style="max-width: 100%; max-height: 70vh; border-radius: 8px;">
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function openImageModal(src) {
+    document.getElementById('modalImage').src = src;
+    document.getElementById('imageModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeImageModal() {
+    document.getElementById('imageModal').classList.remove('active');
+    document.body.style.overflow = '';
+}
+
+function showReplyForm(commentId) {
+    document.getElementById(`reply-form-${commentId}`).style.display = 'block';
+}
+
+function hideReplyForm(commentId) {
+    document.getElementById(`reply-form-${commentId}`).style.display = 'none';
+}
+
+async function likeComment(commentId) {
+    try {
+        const response = await axios.post(`/api/comments/${commentId}/like`);
+        if (response.data.success) {
+            const countSpan = document.getElementById(`comment-likes-${commentId}`);
+            countSpan.textContent = parseInt(countSpan.textContent) + 1;
+        }
+    } catch (error) {
+        showFlashMessage('error', 'Failed to like comment');
+    }
+}
+
+async function deleteComment(commentId) {
+    if (!confirm('Are you sure you want to delete this comment?')) return;
+    
+    try {
+        const response = await axios.delete(`/api/comments/${commentId}`);
+        if (response.data.success) {
+            document.getElementById(`comment-${commentId}`).remove();
+            showFlashMessage('success', 'Comment deleted');
+        }
+    } catch (error) {
+        showFlashMessage('error', 'Failed to delete comment');
+    }
+}
+
+async function deleteReview(reviewId) {
+    if (!confirm('Are you sure you want to delete this review? This cannot be undone.')) return;
+    
+    try {
+        const response = await axios.delete(`/api/reviews/${reviewId}`);
+        if (response.data.success) {
+            window.location.href = '{{ url_for("views.feed_page") }}';
+        }
+    } catch (error) {
+        showFlashMessage('error', 'Failed to delete review');
+    }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Sign Up - MovieReviewer{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <div class="auth-container">
+        <div class="auth-header">
+            <h1>Join MovieReviewer</h1>
+            <p>Share your movie reviews with the world</p>
+        </div>
+        
+        <form method="POST" action="{{ url_for('views.register_page') }}" id="registerForm">
+            {{ form.hidden_tag() }}
+            
+            <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" class="form-control" 
+                       placeholder="Choose a username" required minlength="3" maxlength="80">
+                {% if form.username.errors %}
+                    <div class="error-text">{{ form.username.errors[0] }}</div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label for="email">Email Address</label>
+                <input type="email" id="email" name="email" class="form-control" 
+                       placeholder="Enter your email" required>
+                {% if form.email.errors %}
+                    <div class="error-text">{{ form.email.errors[0] }}</div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" class="form-control" 
+                       placeholder="Minimum 8 characters" required minlength="8">
+                <div class="help-text">Must be at least 8 characters long</div>
+                {% if form.password.errors %}
+                    <div class="error-text">{{ form.password.errors[0] }}</div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label for="password_confirm">Confirm Password</label>
+                <input type="password" id="password_confirm" name="password_confirm" class="form-control" 
+                       placeholder="Re-enter your password" required>
+                {% if form.password_confirm.errors %}
+                    <div class="error-text">{{ form.password_confirm.errors[0] }}</div>
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label for="user_type">Account Type</label>
+                <select name="user_type" id="user_type" class="form-control" required>
+                    <option value="regular">Regular User (Browse, Like, Comment)</option>
+                    <option value="reviewer">Reviewer (Create and Manage Reviews)</option>
+                </select>
+            </div>
+            
+            <div class="form-group">
+                <label for="favorite_genres">Favorite Genres</label>
+                <input type="text" id="favorite_genres" name="favorite_genres" class="form-control" 
+                       placeholder="e.g., Action, Drama, Comedy (comma-separated)">
+                <div class="help-text">Enter your favorite movie genres separated by commas</div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-block btn-lg">
+                <i class="fas fa-user-plus"></i> Create Account
+            </button>
+        </form>
+        
+        <div class="auth-divider">or</div>
+        
+        <div class="auth-footer">
+            Already have an account? <a href="{{ url_for('views.login_page') }}">Login</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('registerForm').addEventListener('submit', function(e) {
+    const password = document.getElementById('password').value;
+    const confirm = document.getElementById('password_confirm').value;
+    
+    if (password !== confirm) {
+        e.preventDefault();
+        showFlashMessage('error', 'Passwords do not match');
+        return;
+    }
+    
+    if (!validateForm(this)) {
+        e.preventDefault();
+    }
+});
+</script>
+{% endblock %}

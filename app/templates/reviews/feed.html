@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+
+{% block title %}Feed - MovieReviewer{% endblock %}
+
+{% block content %}
+{% from '_macros.html' import render_review_card %}
+<div style="max-width: 800px; margin: 0 auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h1>Your Feed</h1>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+            <a href="{{ url_for('views.feed_page', sort='newest') }}" class="btn btn-sm {% if current_sort == 'newest' or not current_sort %}btn-primary{% else %}btn-outline{% endif %}">
+                <i class="fas fa-clock"></i> Newest
+            </a>
+            <a href="{{ url_for('views.feed_page', sort='most_viewed') }}" class="btn btn-sm {% if current_sort == 'most_viewed' %}btn-primary{% else %}btn-outline{% endif %}">
+                <i class="fas fa-eye"></i> Most Viewed
+            </a>
+            <a href="{{ url_for('views.feed_page', sort='most_liked') }}" class="btn btn-sm {% if current_sort == 'most_liked' %}btn-primary{% else %}btn-outline{% endif %}">
+                <i class="fas fa-heart"></i> Most Liked
+            </a>
+            <a href="{{ url_for('views.feed_page', sort='top_rated') }}" class="btn btn-sm {% if current_sort == 'top_rated' %}btn-primary{% else %}btn-outline{% endif %}">
+                <i class="fas fa-star"></i> Top Rated
+            </a>
+            <form action="{{ url_for('views.feed_page') }}" method="GET" style="display: inline-flex; gap: 8px;">
+                <input type="text" name="q" placeholder="Search..." class="form-control" style="padding: 4px 10px; font-size: 0.85rem; width: 150px; border-radius: 50px;">
+                <button type="submit" class="btn btn-outline btn-sm"><i class="fas fa-search"></i></button>
+            </form>
+            {% if current_user.is_authenticated and current_user.can_create_reviews() %}
+                <a href="{{ url_for('views.create_review_page') }}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-plus"></i> New
+                </a>
+            {% endif %}
+        </div>
+    </div>
+    
+    {% if reviews.items %}
+        <div class="infinite-scroll-container" data-load-more="{{ url_for('reviews.get_feed') }}">
+            {% for review in reviews.items %}
+                {{ render_review_card(review) }}
+            {% endfor %}
+            
+            <div class="load-more-trigger" style="height: 20px;"></div>
+            <div class="load-more-end hidden" style="text-align: center; padding: 20px; color: var(--gray-color);">
+                <i class="fas fa-check-circle"></i> You've seen all reviews
+            </div>
+        </div>
+    {% else %}
+        <div class="card text-center" style="padding: 60px 20px;">
+            <i class="fas fa-film" style="font-size: 3rem; color: var(--gray-color); margin-bottom: 16px;"></i>
+            <h3 style="margin-bottom: 8px;">No reviews yet</h3>
+            <p style="color: var(--gray-color);">Follow reviewers to see their reviews here</p>
+            {% if current_user.is_authenticated and current_user.can_create_reviews() %}
+                <a href="{{ url_for('views.create_review_page') }}" class="btn btn-primary" style="margin-top: 16px;">
+                    <i class="fas fa-plus"></i> Write First Review
+                </a>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+
+{% endblock %}

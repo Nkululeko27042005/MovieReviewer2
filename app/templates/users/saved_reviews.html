@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+
+{% block title %}Saved Reviews - MovieReviewer{% endblock %}
+
+{% block content %}
+<div style="max-width: 900px; margin: 0 auto;">
+    <h1 style="margin-bottom: 8px;">Saved Reviews</h1>
+    <p style="color: var(--gray-color); margin-bottom: 24px;">Your favorite reviews saved for later</p>
+    
+    {% if reviews.items %}
+        {% for review in reviews.items %}
+            <div class="review-card" data-review-id="{{ review.id }}">
+                <div class="review-card-header">
+                    <div class="review-author">
+                        <img src="{{ review.author.profile_picture or url_for('static', filename='images/default-avatar.png') }}" 
+                             alt="{{ review.author.username }}">
+                        <div class="review-author-info">
+                            <a href="{{ url_for('views.profile_page', user_id=review.author.id) }}" class="review-author-name">
+                                {{ review.author.username }}
+                            </a>
+                            <span class="review-date">{{ review.published_at.strftime('%B %d, %Y') }}</span>
+                        </div>
+                    </div>
+                    <div class="review-rating-badge">
+                        <i class="fas fa-star"></i>
+                        {{ "%.1f"|format(review.overall_rating) }}
+                    </div>
+                </div>
+                <div class="review-body">
+                    <h3 class="review-title">{{ review.title }}</h3>
+                    <div class="review-movie"><i class="fas fa-film"></i> {{ review.movie_name }}</div>
+                    <p class="review-summary">{{ review.overall_thoughts[:200] }}{% if review.overall_thoughts|length > 200 %}...{% endif %}</p>
+                </div>
+                <div class="review-footer">
+                    <div class="review-actions">
+                        <button type="button" data-review-id="{{ review.id }}" class="review-action-btn review-save-btn">
+                            <i class="fas fa-bookmark saved"></i>
+                            <span class="save-count">{{ review.saves_count }}</span>
+                        </button>
+                        <button type="button" data-review-id="{{ review.id }}" class="review-action-btn review-comments-btn">
+                            <i class="fas fa-comment"></i>
+                            <span class="comment-count">{{ review.comments_count }}</span>
+                        </button>
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <a href="{{ url_for('views.review_detail_page', review_id=review.id) }}" class="btn btn-outline btn-sm">Read More</a>
+                        <button type="button" data-review-id="{{ review.id }}" class="btn btn-danger btn-sm review-unsave-btn">
+                            <i class="fas fa-times"></i> Remove
+                        </button>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+        
+        {% if reviews.has_prev or reviews.has_next %}
+            <div class="pagination">
+                {% if reviews.has_prev %}
+                    <a href="{{ url_for('views.saved_reviews_page', page=reviews.prev_num) }}">&laquo; Previous</a>
+                {% endif %}
+                <span class="active">{{ reviews.page }}</span>
+                {% if reviews.has_next %}
+                    <a href="{{ url_for('views.saved_reviews_page', page=reviews.next_num) }}">Next &raquo;</a>
+                {% endif %}
+            </div>
+        {% endif %}
+    {% else %}
+        <div class="card text-center" style="padding: 60px 20px;">
+            <i class="fas fa-bookmark" style="font-size: 3rem; color: var(--gray-color); margin-bottom: 16px;"></i>
+            <h3 style="margin-bottom: 8px;">No saved reviews</h3>
+            <p style="color: var(--gray-color);">Start saving reviews you like by clicking the bookmark icon</p>
+            <a href="{{ url_for('views.feed_page') }}" class="btn btn-primary" style="margin-top: 16px;">
+                <i class="fas fa-home"></i> Browse Reviews
+            </a>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function handleScrollToComments(reviewId) {
+    const reviewCard = document.querySelector(`.review-card[data-review-id="${reviewId}"]`);
+    if (reviewCard) {
+        reviewCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+}
+
+async function unsaveReview(reviewId) {
+    try {
+        const response = await axios.delete(`/api/reviews/${reviewId}/save`);
+        if (response.data.success) {
+            const card = document.querySelector(`.review-card[data-review-id="${reviewId}"]`);
+            if (card) {
+                card.style.animation = 'slideInRight 0.3s reverse';
+                setTimeout(() => {
+                    card.remove();
+                    showFlashMessage('success', 'Review removed from saved');
+
+                    const remaining = document.querySelectorAll('.review-card');
+                    if (remaining.length === 0) {
+                        location.reload();
+                    }
+                }, 300);
+            }
+        }
+    } catch (error) {
+        showFlashMessage('error', 'Failed to remove saved review');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.review-save-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            const reviewId = button.dataset.reviewId;
+            toggleSave(reviewId);
+        });
+    });
+
+    document.querySelectorAll('.review-comments-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            const reviewId = button.dataset.reviewId;
+            handleScrollToComments(reviewId);
+        });
+    });
+
+    document.querySelectorAll('.review-unsave-btn').forEach(button => {
+        button.addEventListener('click', () => {
+            const reviewId = button.dataset.reviewId;
+            unsaveReview(reviewId);
+        });
+    });
+});
+</script>
+{% endblock %}

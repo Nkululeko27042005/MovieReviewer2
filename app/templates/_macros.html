@@ -1,0 +1,76 @@
+{% macro render_review_card(review) %}
+<div class="review-card" data-review-id="{{ review.id }}">
+    <div class="review-card-header">
+        <div class="review-author">
+            <img src="{{ review.author.profile_picture or url_for('static', filename='images/default-avatar.png') }}" 
+                 alt="{{ review.author.username }}">
+            <div class="review-author-info">
+                <a href="{{ url_for('views.profile_page', user_id=review.author.id) }}" class="review-author-name">
+                    {{ review.author.username }}
+                </a>
+                <span class="review-date">{{ review.published_at.strftime('%B %d, %Y') }}</span>
+            </div>
+        </div>
+        <div class="review-rating-badge stars-display">
+            {% for i in range(1, 11) %}
+                {% if i <= review.overall_rating|int %}
+                    <i class="fas fa-star" style="color: var(--warning-color);"></i>
+                {% else %}
+                    <i class="far fa-star" style="color: var(--warning-color);"></i>
+                {% endif %}
+            {% endfor %}
+            <span style="margin-left: 8px; font-size: 0.9em;">({{ "%.1f"|format(review.overall_rating) }})</span>
+        </div>
+    </div>
+    <div class="review-body">
+        <h3 class="review-title">{{ review.title }}</h3>
+        <div class="review-movie"><i class="fas fa-film"></i> {{ review.movie_name }}</div>
+        {% if review.genres %}
+            <div class="review-genres">
+                {% for genre in review.genres %}
+                    <span class="genre-tag">{{ genre.name }}</span>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        {% if review.review_poster_url or review.movie_poster_url %}
+            <div class="poster-stack">
+                {% if review.review_poster_url %}
+                    <div class="poster-item">
+                        <img src="{{ review.review_poster_url }}" alt="Review Poster">
+                        <div class="poster-label">Review Poster</div>
+                    </div>
+                {% endif %}
+                {% if review.movie_poster_url %}
+                    <div class="poster-item">
+                        <img src="{{ review.movie_poster_url }}" alt="Movie Poster">
+                        <div class="poster-label">Movie Poster</div>
+                    </div>
+                {% endif %}
+            </div>
+        {% endif %}
+        
+        <p class="review-summary">{{ review.overall_thoughts[:300] }}{% if review.overall_thoughts|length > 300 %}...{% endif %}</p>
+        {% if review.has_spoilers %}
+            <span class="review-spoiler"><i class="fas fa-exclamation-triangle"></i> Contains Spoilers</span>
+        {% endif %}
+    </div>
+    <div class="review-footer">
+        <div class="review-actions">
+            <button class="review-action-btn like-btn" onclick="toggleLike({{ review.id }})">
+                <i class="fas fa-heart {% if review.id in liked_review_ids %}liked{% endif %}"></i>
+                <span class="like-count">{{ review.likes_count }}</span>
+            </button>
+            <button class="review-action-btn" onclick="toggleSave({{ review.id }})">
+                <i class="fas fa-bookmark {% if review.id in saved_review_ids %}saved{% endif %}"></i>
+                <span class="save-count">{{ review.saves_count }}</span>
+            </button>
+            <button class="review-action-btn" onclick="scrollToComments({{ review.id }})">
+                <i class="fas fa-comment"></i>
+                <span class="comment-count">{{ review.comments_count }}</span>
+            </button>
+        </div>
+        <a href="{{ url_for('views.review_detail_page', review_id=review.id) }}" class="btn btn-outline btn-sm">Read More</a>
+    </div>
+</div>
+{% endmacro %}

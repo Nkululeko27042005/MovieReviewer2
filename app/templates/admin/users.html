@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+
+{% block title %}Manage Users - Admin - MovieReviewer{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+{% endblock %}
+
+{% block content %}
+<div style="max-width: 1200px; margin: 0 auto;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+        <h1>Manage Users</h1>
+        <a href="{{ url_for('admin.get_all_users') }}" class="btn btn-outline btn-sm">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+    
+    <!-- Search -->
+    <div class="card" style="margin-bottom: 20px;">
+        <form method="GET" action="{{ url_for('admin.get_all_users') }}" style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
+            <input type="text" name="search" class="form-control" placeholder="Search by username or email..." 
+                   value="{{ search or '' }}" style="flex: 1; min-width: 200px;">
+            <button type="submit" class="btn btn-primary btn-sm">
+                <i class="fas fa-search"></i> Search
+            </button>
+            <a href="{{ url_for('admin.get_all_users') }}" class="btn btn-outline btn-sm">Clear</a>
+        </form>
+    </div>
+    
+    <!-- Users Table -->
+    <div class="card">
+        {% if users.items %}
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>User</th>
+                        <th>Email</th>
+                        <th>Type</th>
+                        <th>Status</th>
+                        <th>Reviews</th>
+                        <th>Joined</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users.items %}
+                        <tr>
+                            <td>#{{ user.id }}</td>
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <img src="{{ user.profile_picture or url_for('static', filename='images/default-avatar.png') }}" 
+                                         style="width: 30px; height: 30px; border-radius: 50%; object-fit: cover;">
+                                    <a href="{{ url_for('users.get_user_profile', user_id=user.id) }}">{{ user.username }}</a>
+                                </div>
+                            </td>
+                            <td>{{ user.email }}</td>
+                            <td><span class="status-badge" style="background: rgba(108, 99, 255, 0.1); color: var(--primary-color);">
+                                {{ user.user_type.value|title }}
+                            </span></td>
+                            <td><span class="status-badge {{ user.account_status.value }}">{{ user.account_status.value|title }}</span></td>
+                            <td>{{ user.reviews.count() }}</td>
+                            <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+                            <td>
+                                <div class="actions">
+                                    <select data-user-id="{{ user.id }}" class="form-control admin-manage-select" style="padding: 4px 8px; font-size: 0.8rem; width: auto;">
+                                        <option value="">Actions</option>
+                                        <option value="make_reviewer">Make Reviewer</option>
+                                        <option value="make_regular">Make Regular</option>
+                                        <option value="activate">Activate</option>
+                                        <option value="suspend">Suspend</option>
+                                        <option value="deactivate">Deactivate</option>
+                                    </select>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            
+            {% if users.has_prev or users.has_next %}
+                <div class="pagination">
+                        {% if users.has_prev %}
+                        <a href="{{ url_for('admin.get_all_users', page=users.prev_num, search=search) }}">&laquo; Previous</a>
+                    {% endif %}
+                    <span class="active">{{ users.page }}</span>
+                    {% if users.has_next %}
+                        <a href="{{ url_for('admin.get_all_users', page=users.next_num, search=search) }}">Next &raquo;</a>
+                    {% endif %}
+                </div>
+            {% endif %}
+        {% else %}
+            <p style="text-align: center; padding: 40px; color: var(--gray-color);">
+                <i class="fas fa-users" style="font-size: 2rem; display: block; margin-bottom: 12px;"></i>
+                No users found
+            </p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.admin-manage-select').forEach(select => {
+        select.addEventListener('change', (e) => {
+            const action = select.value;
+            const userId = select.dataset.userId;
+            manageUser(userId, action, select);
+        });
+    });
+});
+
+async function manageUser(userId, action, selectEl) {
+    if (!action) return;
+    const confirmed = confirm(`Are you sure you want to ${action.replace('_', ' ')} this user?`);
+    if (!confirmed) {
+        if (selectEl) selectEl.value = '';
+        else {
+            const sel = document.querySelector(`select[data-user-id="${userId}"]`);
+            if (sel) sel.value = '';
+        }
+        return;
+    }
+
+    try {
+        const response = await axios.put(`/api/admin/users/${userId}/manage`, {
+            action: action
+        });
+
+        if (response.data.success) {
+            showFlashMessage('success', response.data.message);
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            showFlashMessage('error', response.data.message);
+            if (selectEl) selectEl.value = '';
+        }
+    } catch (error) {
+        showFlashMessage('error', 'Failed to manage user');
+        if (selectEl) selectEl.value = '';
+    }
+}
+</script>
+{% endblock %}
